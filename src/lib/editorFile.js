@@ -22,6 +22,7 @@ import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import config from "./config";
+import { isInitialPluginLoadComplete } from "./loadPlugins";
 import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
@@ -225,6 +226,21 @@ function createSessionProxy(state, file) {
 			return value;
 		},
 	});
+}
+
+function maybeRecommendLanguageModeExtension(file, modeInfo) {
+	if (appSettings.value.recommendExtensions === false) return;
+	if (!isInitialPluginLoadComplete()) return;
+	if (modeInfo?.name !== "text" || modeInfo.supportsFile(file.filename)) return;
+
+	void import("./languageModeRecommendations").then(
+		({ default: recommend }) => {
+			recommend(file, modeInfo);
+		},
+		(error) => {
+			console.warn("Failed to load language mode recommendations.", error);
+		},
+	);
 }
 
 /**
@@ -1271,8 +1287,9 @@ export default class EditorFile {
 	/**
 	 * Sets syntax highlighting of the file.
 	 * @param {string} [mode]
+	 * @param {{ recommend?: boolean }} [options]
 	 */
-	setMode(mode) {
+	setMode(mode, options = {}) {
 		if (this.type !== "editor") return;
 		const event = createFileEvent(this);
 		this.#emit("changemode", event);
@@ -1295,6 +1312,9 @@ export default class EditorFile {
 		// Store mode info for later use when creating editor view
 		this.currentMode = mode;
 		this.currentLanguageExtension = modeInfo?.getExtension() || null;
+		if (options.recommend !== false) {
+			maybeRecommendLanguageModeExtension(this, modeInfo);
+		}
 
 		// sets file icon
 		this.#tab.lead(

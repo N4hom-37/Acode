@@ -15,11 +15,13 @@ import FontManager from "pages/fontManager";
 import QuickToolsSettings from "pages/quickTools";
 import encodings, { getEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
+import { isPlayStoreInstall } from "utils/installSource";
 import Url from "utils/Url";
 
 export default function otherSettings() {
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
+	const installedFromPlayStore = isPlayStoreInstall();
 	const appFontText = strings["app font"] || "App font";
 	const appFontInfo =
 		strings["settings-info-app-font-family"] ||
@@ -178,8 +180,14 @@ export default function otherSettings() {
 			value: values.quickToolsTriggerMode,
 			valueText: (value) => value.capitalize(),
 			select: [
-				[appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK, "Click"],
-				[appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH, "Touch"],
+				[
+					appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK,
+					strings["quicktools-trigger:click"],
+				],
+				[
+					appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH,
+					strings["quicktools-trigger:touch"],
+				],
 			],
 			info: strings["settings-info-app-quick-tools-trigger-mode"],
 			category: categories.quickTools,
@@ -284,13 +292,17 @@ export default function otherSettings() {
 			info: strings["settings-info-app-check-files"],
 			category: categories.advanced,
 		},
-		{
-			key: "checkForAppUpdates",
-			text: strings["check for app updates"],
-			checkbox: values.checkForAppUpdates,
-			info: strings["info-checkForAppUpdates"],
-			category: categories.advanced,
-		},
+		...(!installedFromPlayStore
+			? [
+					{
+						key: "checkForAppUpdates",
+						text: strings["check for app updates"],
+						checkbox: values.checkForAppUpdates,
+						info: strings["info-checkForAppUpdates"],
+						category: categories.advanced,
+					},
+				]
+			: []),
 		{
 			key: "console",
 			text: strings.console,
@@ -437,7 +449,7 @@ export default function otherSettings() {
 				break;
 
 			case "floatingButton":
-				if (value) {
+				if (value && !editorManager.activeFile?.hideQuickTools) {
 					clearTimeout(quickTools.$toggler._hideTimeout);
 					quickTools.$toggler._hideTimeout = null;
 					quickTools.$toggler.classList.remove("hide");
